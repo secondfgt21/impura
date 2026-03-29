@@ -563,28 +563,41 @@ async function adminVerify(res, orderId, token) {
 
 module.exports = async (req, res) => {
   try {
-    // ================= TELEGRAM WEBHOOK =================
-if (req.method === 'POST' && req.url.includes('telegram-webhook')) {
+  if (req.url.includes('telegram-webhook')) {
+  console.error('WEBHOOK MASUK:', req.method, req.url);
+
+  if (req.method !== 'POST') {
+    return sendJson(res, { ok: false, error: 'method_not_allowed', method: req.method }, 405);
+  }
+
   let body = '';
 
   await new Promise((resolve) => {
-    req.on('data', chunk => body += chunk);
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
     req.on('end', resolve);
+    req.on('error', resolve);
   });
 
   try {
     const update = JSON.parse(body || '{}');
+    console.error('UPDATE:', JSON.stringify(update));
 
     const bot = require('../lib/telegram-bot');
     await bot.handleUpdate(update);
 
-    return sendJson(res, { ok: true });
+    return sendJson(res, { ok: true, route: 'telegram-webhook' });
   } catch (err) {
-    console.error('Webhook error:', err);
-    return sendJson(res, { ok: false }, 500);
+    console.error('WEBHOOK ERROR:', err);
+    return sendJson(res, {
+      ok: false,
+      error: 'telegram_webhook_failed',
+      detail: String(err.message || err)
+    }, 500);
   }
 }
-    
+
     if (req.method === 'HEAD' && req.url === '/ping') {
       res.statusCode = 200;
       return res.end();
