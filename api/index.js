@@ -1,5 +1,12 @@
 const { createClient } = require('@supabase/supabase-js');
 const crypto = require('crypto');
+let bot = null;
+
+try {
+  bot = require('../lib/telegram-bot');
+} catch (err) {
+  console.error('Gagal load telegram bot:', err);
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
