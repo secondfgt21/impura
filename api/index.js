@@ -563,6 +563,28 @@ async function adminVerify(res, orderId, token) {
 
 module.exports = async (req, res) => {
   try {
+    // ================= TELEGRAM WEBHOOK =================
+if (req.method === 'POST' && req.url.includes('telegram-webhook')) {
+  let body = '';
+
+  await new Promise((resolve) => {
+    req.on('data', chunk => body += chunk);
+    req.on('end', resolve);
+  });
+
+  try {
+    const update = JSON.parse(body || '{}');
+
+    const bot = require('../lib/telegram-bot');
+    await bot.handleUpdate(update);
+
+    return sendJson(res, { ok: true });
+  } catch (err) {
+    console.error('Webhook error:', err);
+    return sendJson(res, { ok: false }, 500);
+  }
+}
+    
     if (req.method === 'HEAD' && req.url === '/ping') {
       res.statusCode = 200;
       return res.end();
