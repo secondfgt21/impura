@@ -619,3 +619,21 @@ module.exports = async (req, res) => {
     return sendJson(res, { ok: false, error: 'internal_server_error', detail: String(error?.message || error) }, 500);
   }
 };
+
+const express = require('express');
+const serverless = require('serverless-http');
+const cookieParser = require('cookie');
+const bot = require('../lib/telegram-bot');
+
+const app = express();
+
+app.use(express.json());
+
+app.post('/api/telegram-webhook', async (req, res) => {
+  try {
+    await bot.handleUpdate(req.body, res);
+  } catch (err) {
+    console.error('Webhook error:', err);
+    res.status(500).json({ ok: false, error: 'telegram_webhook_failed' });
+  }
+});
