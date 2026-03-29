@@ -563,6 +563,37 @@ async function adminVerify(res, orderId, token) {
 
 module.exports = async (req, res) => {
   try {
+    if (req.method === 'POST' && req.url.startsWith('/api/telegram-webhook')) {
+      let body = {};
+
+      try {
+        body = await new Promise((resolve) => {
+          let data = '';
+          req.on('data', (chunk) => {
+            data += chunk;
+          });
+          req.on('end', () => {
+            try {
+              resolve(JSON.parse(data || '{}'));
+            } catch {
+              resolve({});
+            }
+          });
+          req.on('error', () => resolve({}));
+        });
+      } catch {
+        body = {};
+      }
+
+      try {
+        await bot.handleUpdate(body);
+        return sendJson(res, { ok: true });
+      } catch (err) {
+        console.error('Webhook error:', err);
+        return sendJson(res, { ok: false, error: 'telegram_webhook_failed' }, 500);
+      }
+    }
+
     if (req.method === 'HEAD' && req.url === '/ping') {
       res.statusCode = 200;
       return res.end();
@@ -619,21 +650,59 @@ module.exports = async (req, res) => {
     return sendJson(res, { ok: false, error: 'internal_server_error', detail: String(error?.message || error) }, 500);
   }
 };
+    if (req.method === 'HEAD' && req.url === '/ping') {
+      res.statusCode = 200;
+      return res.end();
+    }
 
-const express = require('express');
-const serverless = require('serverless-http');
-const cookieParser = require('cookie');
-const bot = require('../lib/telegram-bot');
+    const reqUrl = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
+    const path = getPath(reqUrl);
+    const query = getQuery(reqUrl);
 
-const app = express();
+    if (req.method === 'GET' && path === '/') return home(res);
+    if (req.method === 'GET' && path === '/ping') return sendJson(res, { status: 'ok' });
+    if (req.method === 'GET' && path === '/faq') return faqPage(res);
+    if (req.method === 'GET' && path === '/cek-order') return cekOrderPage(res);
 
-app.use(express.json());
+    if (req.method === 'GET' && path.startsWith('/checkout/')) {
+      const productId = decodeURIComponent(path.split('/')[2] || '');
+      const qty = Math.max(1, Math.min(Number(query.qty || 1), 99));
+      return checkout(req, res, productId, qty);
+    }
 
-app.post('/api/telegram-webhook', async (req, res) => {
-  try {
-    await bot.handleUpdate(req.body, res);
-  } catch (err) {
-    console.error('Webhook error:', err);
-    res.status(500).json({ ok: false, error: 'telegram_webhook_failed' });
+    if (req.method === 'GET' && path.startsWith('/pay/')) {
+      const orderId = decodeURIComponent(path.split('/')[2] || '');
+      return pay(res, orderId);
+    }
+
+    if (req.method === 'GET' && path.startsWith('/status/')) {
+      const orderId = decodeURIComponent(path.split('/')[2] || '');
+      return statusPage(res, orderId);
+    }
+
+    if (req.method === 'GET' && path.startsWith('/voucher/')) {
+      const orderId = decodeURIComponent(path.split('/')[2] || '');
+      return voucherPage(res, orderId);
+    }
+
+    if (req.method === 'GET' && path.startsWith('/api/order/')) {
+      const orderId = decodeURIComponent(path.split('/')[3] || '');
+      return apiOrder(res, orderId);
+    }
+
+    if (req.method === 'GET' && path === '/api/stock') return apiStock(res);
+    if (req.method === 'GET' && path === '/api/stats') return apiStats(res);
+    if (req.method === 'GET' && path === '/api/visitors') return apiVisitors(req, res);
+    if (req.method === 'GET' && path === '/admin') return adminPage(res, query.token);
+
+    if (req.method === 'POST' && path.startsWith('/admin/verify/')) {
+      const orderId = decodeURIComponent(path.split('/')[3] || '');
+      return adminVerify(res, orderId, query.token);
+    }
+
+    return sendHtml(res, '<h3>Not Found</h3>', 404);
+  } catch (error) {
+    console.error(error);
+    return sendJson(res, { ok: false, error: 'internal_server_error', detail: String(error?.message || error) }, 500);
   }
-});
+};
