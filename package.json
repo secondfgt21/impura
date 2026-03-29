@@ -2,13 +2,18 @@
   "name": "impura-node-vercel",
   "version": "1.0.0",
   "private": true,
-  "engines": {
-    "node": ">=20"
-  },
+  "main": "api/index.js",
+  "type": "commonjs",
   "scripts": {
-    "dev": "vercel dev"
+    "start": "node api/index.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.56.0"
+    "@supabase/supabase-js": "^2.49.8",
+    "cookie": "^1.0.2",
+    "express": "^4.21.2",
+    "serverless-http": "^3.2.0"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
